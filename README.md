@@ -1,6 +1,8 @@
-# Slayer Legend Monitor — VMOS Cloud
+# Slayer Legend Monitor — VMOS Cloud / VSPhone
 
-Monitor 24/7 que verifica se o jogo **Slayer Legend** continua rodando na sua instância **VMOS Cloud**. Em caso de falha (instância caiu, jogo fechou, stream travado), envia alerta imediato no **Telegram**.
+Monitor 24/7 que verifica se o jogo **Slayer Legend** continua rodando na sua instância de cloud Android. Em caso de falha (instância caiu, jogo fechou, stream travado), envia alerta imediato no **Telegram**.
+
+**Provedores suportados:** VMOS Cloud, VSPhone. Outros (UGPhone, Redfinger…) podem ser adicionados em poucas linhas — ver seção [Adicionando um novo provedor](#adicionando-um-novo-provedor).
 
 Feito para quem deixa o farming automático ligado o dia inteiro e não quer descobrir 12 horas depois que o jogo parou no minuto 5.
 
@@ -8,8 +10,8 @@ Feito para quem deixa o farming automático ligado o dia inteiro e não quer des
 
 | Falha | Como é detectado |
 |---|---|
-| Instância VMOS offline / em erro | API VMOS (`padDetails`) |
-| Jogo desinstalado | API VMOS (`listInstalledApp`) |
+| Instância offline / em erro | API do provedor (`padDetails`) |
+| Jogo desinstalado | API do provedor (`listInstalledApp`) |
 | Jogo crashou ou foi para segundo plano | Screenshot via API + template matching OpenCV |
 | Stream congelado (HUD na tela mas jogo travou) | Comparação de 2 screenshots em sequência |
 
@@ -18,7 +20,7 @@ Feito para quem deixa o farming automático ligado o dia inteiro e não quer des
 ```
 ┌─ a cada 20 min ─────────────────────────────────────────────┐
 │                                                              │
-│   1. API VMOS  ──→  online? padStatus=10? jogo instalado?    │
+│   1. API do provedor  ──→  online? padStatus=10? instalado? │
 │         │                                                    │
 │         ↓ sim                                                │
 │   2. API screenshot  ──→  HUD presente? (OpenCV)             │
@@ -36,7 +38,9 @@ Feito para quem deixa o farming automático ligado o dia inteiro e não quer des
 
 - **Python 3.10+** ([python.org/downloads](https://www.python.org/downloads/))
 - **Git** ([git-scm.com](https://git-scm.com/downloads))
-- Conta ativa no [VMOS Cloud](https://www.vmoscloud.com) com pelo menos 1 instância
+- Conta ativa em **um** dos provedores suportados, com pelo menos 1 instância:
+  - [VMOS Cloud](https://www.vmoscloud.com)
+  - [VSPhone](https://cloud.vsphone.com)
 - Conta no Telegram
 
 ---
@@ -83,7 +87,19 @@ Preencha as 5 linhas marcadas como `[OBRIGATÓRIO]`. As demais já vêm com defa
 
 ---
 
-## Configurando o VMOS Cloud
+## Escolhendo o provedor
+
+O monitor suporta **VMOS Cloud** e **VSPhone**. Os dois usam APIs essencialmente idênticas (mesmo algoritmo de assinatura HMAC-SHA256, mesmos schemas de resposta) — diferem apenas no host e no prefixo das rotas.
+
+No `.env`, defina qual provedor você usa:
+
+```ini
+CLOUD_PROVIDER=vmos       # ou: vsphone
+```
+
+E preencha apenas as credenciais do provedor escolhido (`VMOS_*` para VMOS, `VSPHONE_*` para VSPhone). As outras podem ficar com placeholder.
+
+## Configurando o VMOS Cloud (`CLOUD_PROVIDER=vmos`)
 
 ### Obter Access Key e Secret Key
 
@@ -108,7 +124,27 @@ VMOS_PAD_CODES=APP64N6T7S3N8L6K
 > Para monitorar múltiplas instâncias, separe por vírgula:
 > `VMOS_PAD_CODES=APP64N...,APP78M...`
 
-> ⚠ **Não confunda o `padCode` com outros códigos do painel.** A API VMOS retorna vários identificadores em outros endpoints (ex: códigos `AC32010100091` que aparecem em listagens administrativas). O **único** identificador que você deve usar aqui é o **"ID do telefone na nuvem"** mostrado nas Informações Básicas da sua instância. Se a API responder `Instance not found`, é quase sempre o padCode errado.
+> ⚠ **Não confunda o `padCode` com outros códigos do painel.** A API retorna vários identificadores em outros endpoints (ex: códigos `AC32010100091` que aparecem em listagens administrativas). O **único** identificador que você deve usar aqui é o **"ID do telefone na nuvem"** mostrado nas Informações Básicas da sua instância. Se a API responder `Instance not found`, é quase sempre o padCode errado.
+
+## Configurando o VSPhone (`CLOUD_PROVIDER=vsphone`)
+
+### Obter Access Key e Secret Key
+
+1. Entre em [cloud.vsphone.com](https://cloud.vsphone.com) e faça login.
+2. Acesse a página de credenciais (no painel deve haver uma seção **AK/SK** ou **API Access**).
+3. Anote os dois valores:
+   - `AccessKeyId` → vai em `VSPHONE_ACCESS_KEY`
+   - `SecretAccessKey` → vai em `VSPHONE_SECRET_KEY`
+
+### Obter o ID da instância
+
+No painel do VSPhone, abra a instância e procure pelo identificador do telefone na nuvem (mesmo conceito do VMOS — uma string como `APP...`). Coloque no `.env`:
+
+```ini
+VSPHONE_PAD_CODES=APPxxxxxxxxxxxx
+```
+
+> O VSPhone parece ser baseado na mesma plataforma que o VMOS — os IDs têm formato similar e o algoritmo de assinatura é literalmente o mesmo (`armcloud-paas` no credentialScope). O `tools/diagnose.py` funciona idêntico para os dois — basta `CLOUD_PROVIDER=vsphone` no `.env`.
 
 ---
 
@@ -137,8 +173,8 @@ Você precisa de **dois valores**: o `TELEGRAM_BOT_TOKEN` (identidade do bot) e 
 python tools/diagnose.py
 ```
 
-Esse script faz 3 verificações automáticas:
-- ✅ Credenciais VMOS funcionam (lista os padCodes da sua conta).
+Esse script detecta automaticamente o provedor configurado (`CLOUD_PROVIDER` no `.env`) e faz as verificações:
+- ✅ Credenciais do provedor (VMOS ou VSPhone) funcionam — lista padCodes da sua conta.
 - ✅ Token do Telegram é válido.
 - ✅ Mensagem de teste chega no chat configurado.
 - ✅ Lista todos os apps instalados e destaca o pacote do Slayer Legend.
@@ -199,7 +235,7 @@ Por isso são pessoais. Você gera os seus em ~3 min seguindo o passo a passo ab
 
 ### Passo a passo para adicionar seus templates
 
-**1. Abra o jogo na sua instância VMOS** em uma tela típica de combate (farming ativo, boss).
+**1. Abra o jogo na sua instância** (VMOS ou VSPhone) em uma tela típica de combate (farming ativo, boss).
 
 **2. Capture um screenshot via API:**
 ```powershell
@@ -264,7 +300,7 @@ VISUAL_MIN_MATCHES=3          # quantos templates precisam casar simultaneamente
 
 ## Configurando a detecção de "frame congelado" (opcional)
 
-Detecta o cenário raro: jogo crashou mas a imagem permaneceu congelada na tela do VMOS, com o HUD ainda visível. Sem essa checagem o fallback visual diria "tudo OK" porque o HUD ainda está lá.
+Detecta o cenário raro: jogo crashou mas a imagem permaneceu congelada na tela do streaming (VMOS/VSPhone), com o HUD ainda visível. Sem essa checagem o fallback visual diria "tudo OK" porque o HUD ainda está lá.
 
 > Pré-requisito: o **fallback visual já deve estar funcionando** (templates calibrados e validados). O frozen check só roda quando o HUD foi detectado no ciclo.
 
@@ -477,7 +513,7 @@ journalctl -u slayer-monitor -f
 ├── stop_monitor.bat                 # encerra o monitor (Windows)
 ├── slayer_monitor/
 │   ├── config.py                    # carrega o .env
-│   ├── vmos_client.py               # API VMOS + assinatura HMAC-SHA256 AK/SK
+│   ├── vmos_client.py               # cliente VMOS/VSPhone (HMAC-SHA256 AK/SK)
 │   ├── telegram_notifier.py         # alertas no Telegram
 │   └── visual_detector.py           # OpenCV template matching + frozen detection
 ├── tools/
@@ -516,14 +552,15 @@ Todas rodam dentro do `.venv` ativo, na raiz do projeto:
 
 ## Troubleshooting
 
-### `VMOS retornou erro 2020: Instance not found`
+### `Erro 2020: Instance not found` (VMOS ou VSPhone)
 
-O `padCode` no `.env` está errado. Causas comuns:
+O `padCode` no `.env` (`VMOS_PAD_CODES` ou `VSPHONE_PAD_CODES`, conforme o provedor) está errado. Causas comuns:
 
-- **Você colou outro identificador** que apareceu no painel (ex: o ID do servidor físico `AC32010100091`). O único correto é o **"ID do telefone na nuvem"** mostrado nas Informações Básicas, ex: `APP64N6T7S3N8L6K`.
+- **Você colou outro identificador** que apareceu no painel (ex: ID do servidor físico tipo `AC32010100091`). O único correto é o **"ID do telefone na nuvem"** mostrado nas Informações Básicas, ex: `APP64N6T7S3N8L6K`.
 - **Tem espaço ou caractere invisível** colado junto. Apague e digite manualmente.
+- **Você está com `CLOUD_PROVIDER` errado** — se a conta é VSPhone mas você deixou `vmos`, a API responde "instance not found" porque está consultando outro provedor.
 
-Use `python tools/diagnose.py` — ele lista os padCodes que sua conta consegue acessar via API.
+Use `python tools/diagnose.py` — ele lista os padCodes que sua conta consegue acessar via API do provedor configurado.
 
 ### `Pacote NÃO está instalado` mesmo com o jogo aberto
 
@@ -547,16 +584,20 @@ Você ainda **não enviou mensagem ao bot**. Bots do Telegram só conseguem mand
 
 Você bloqueou seu próprio bot em algum momento. No Telegram, abra o chat com o bot, role até o fim, e clique em **Desbloquear**.
 
-### `HTTP 401/403` da API VMOS
+### `HTTP 401/403` da API do provedor
 
-Suas credenciais AK/SK estão erradas, expiraram, ou foram revogadas. Vá em **vmoscloud.com → Personal Center → AccessKey** e:
+Suas credenciais AK/SK estão erradas, expiraram, ou foram revogadas. Vá no painel do provedor configurado:
+- **VMOS**: [vmoscloud.com](https://www.vmoscloud.com) → Personal Center → AccessKey
+- **VSPhone**: [cloud.vsphone.com](https://cloud.vsphone.com) → AK/SK
+
+Em ambos:
 - Confirme que a chave está ativa.
 - Recrie se necessário (a Secret só aparece uma vez na criação).
 - Cuidado para não copiar espaços antes/depois quando colar no `.env`.
 
 ### `HTTP 404: Not Found` em algum endpoint
 
-Pode acontecer se a VMOS atualizar a API. O endpoint `/vcpcloud/api/padApi/padList` retorna 404 em algumas regiões — isso é esperado e o `diagnose.py` tem fallbacks. Se o erro for em endpoints que o monitor usa (`padDetails`, `listInstalledApp`, `getLongGenerateUrl`), abra uma issue no GitHub.
+Pode acontecer se o provedor atualizar a API. O endpoint `/padList` (em qualquer prefix) retorna 404 em algumas regiões/contas — isso é esperado e o `diagnose.py` tem fallbacks. Se o erro for em endpoints que o monitor usa (`padDetails`, `listInstalledApp`, `getLongGenerateUrl`), abra uma issue no GitHub indicando qual `CLOUD_PROVIDER` você está usando.
 
 ### Visual fallback dá falso positivo (HUD detectado com jogo fechado)
 
@@ -616,27 +657,56 @@ journalctl -u slayer-monitor -f
 Este projeto é deliberadamente simples — funciona como CLI/serviço local. Algumas direções interessantes para quem quiser estender:
 
 ### Funcionalidades
-- **Auto-recovery**: ao detectar o jogo fechado, chamar `startApp` da API VMOS para tentar reabrir antes de alertar.
+- **Auto-recovery**: ao detectar o jogo fechado, chamar `startApp` da API do provedor para tentar reabrir antes de alertar.
 - **Múltiplos jogos**: generalizar `GAME_PACKAGE` para uma lista, com templates por jogo.
 - **Dashboard de histórico**: salvar checagens em SQLite e exibir gráfico de uptime.
 - **Detecção mais inteligente**: SSIM em vez de diff médio para frozen check; ORB/SIFT em vez de template matching para o HUD.
 - **Outros canais de alerta**: Discord webhook, e-mail, Pushover, ntfy.sh.
-- **Multi-cloud**: abstrair o cliente atual atrás de uma interface `CloudProvider` para suportar **VMOS Cloud, VSPhone e UGPhone** (os 3 principais provedores de Android-on-cloud). Outros candidatos: Redfinger, GeeLark.
+- **Multi-cloud**: VMOS Cloud e VSPhone já são suportados (alterando `CLOUD_PROVIDER` no `.env`). Falta adicionar UGPhone (próximo alvo) e candidatos como Redfinger e GeeLark — ver seção [Adicionando um novo provedor](#adicionando-um-novo-provedor).
 
 ### Empacotamento e UX
 - **App Desktop** com Tauri/Electron + UI para configurar o `.env` num formulário, ver status em tempo real, e exibir os screenshots capturados.
 - **App mobile multi-plataforma (Android + iOS) com integração aos 3 principais provedores** (VMOS, VSPhone, UGPhone), publicado na **Play Store** e na **App Store**. UI nativa para login na conta do provedor escolhido, configurar instâncias monitoradas, receber push nativo (FCM no Android, APNs no iOS) em vez de Telegram, e visualizar screenshots históricos. Stack possível: React Native ou Flutter (compartilhado entre iOS/Android), backend FastAPI hospedado em VPS rodando o loop de verificação (já que apps mobile não rodam loops 24/7 confiavelmente em background), com o mesmo core deste repo. Pré-requisito: refactor multi-provider concluído.
 - **Interface web** com FastAPI + React: hospedável em VPS, dashboard com status de todas as instâncias, login multi-usuário.
-- **Imagem Docker** — `docker run -e VMOS_ACCESS_KEY=... slayer-monitor` para deploy 1-comando.
+- **Imagem Docker** — `docker run -e CLOUD_PROVIDER=vmos -e VMOS_ACCESS_KEY=... slayer-monitor` para deploy 1-comando.
 - **GitHub Actions schedule** rodando `python monitor.py --once` a cada 20 min como cron-job-as-a-service grátis.
 
 ### Robustez
-- **Retry com backoff exponencial** nas chamadas à API VMOS.
+- **Retry com backoff exponencial** nas chamadas à API do provedor.
+- **Tratamento separado para timeouts de rede** (não disparar alerta de Telegram no Telegram em timeouts isolados; só após N falhas consecutivas).
 - **Persistência do estado de cooldown** em arquivo, para sobreviver a restart do processo.
 - **Métricas Prometheus** para integração com Grafana.
-- **Testes automatizados** com mocks da API VMOS e screenshots sintéticos.
+- **Testes automatizados** com mocks da API do provedor e screenshots sintéticos.
 
 PRs e issues são bem-vindos!
+
+---
+
+## Adicionando um novo provedor
+
+Se o provedor que você usa segue o mesmo padrão do VMOS/VSPhone (HMAC-SHA256 com AK/SK, service name `armcloud-paas`, endpoints `padDetails`/`listInstalledApp`/`getLongGenerateUrl`/`startApp`), basta:
+
+**1.** Em [`slayer_monitor/config.py`](slayer_monitor/config.py), adicione uma entrada em `PROVIDER_PROFILES`:
+
+```python
+PROVIDER_PROFILES = {
+    "vmos":    {"default_host": "api.vmoscloud.com", "path_prefix": "/vcpcloud/api/padApi"},
+    "vsphone": {"default_host": "api.vsphone.com",   "path_prefix": "/vsphone/api/padApi"},
+    "ugphone": {"default_host": "api.ugphone.com",   "path_prefix": "/ugphone/api/padApi"},  # novo
+}
+```
+
+**2.** Documente as variáveis no `.env.example` (`UGPHONE_ACCESS_KEY`, `UGPHONE_SECRET_KEY`, `UGPHONE_API_HOST`, `UGPHONE_PAD_CODES`).
+
+**3.** Habilite no `.env`:
+```ini
+CLOUD_PROVIDER=ugphone
+UGPHONE_ACCESS_KEY=...
+UGPHONE_SECRET_KEY=...
+UGPHONE_PAD_CODES=...
+```
+
+Pronto. Se o provedor diverge do padrão (signing diferente, schemas de resposta distintos, polling de taskId em vez de URL longeva), aí é necessário criar uma classe cliente própria — abrir issue para discutir o design.
 
 ---
 

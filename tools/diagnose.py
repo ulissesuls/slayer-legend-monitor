@@ -64,27 +64,36 @@ def post_raw(ak, sk, host, path, payload):
 
 
 def main():
-    ak = os.getenv("VMOS_ACCESS_KEY", "")
-    sk = os.getenv("VMOS_SECRET_KEY", "")
-    host = os.getenv("VMOS_API_HOST", "api.vmoscloud.com")
+    from slayer_monitor.config import PROVIDER_PROFILES
+
+    provider = os.getenv("CLOUD_PROVIDER", "vmos").strip().lower() or "vmos"
+    if provider not in PROVIDER_PROFILES:
+        print(f"❌  CLOUD_PROVIDER inválido: {provider!r}")
+        return
+    prefix_env = provider.upper()  # ex: "VMOS", "VSPHONE"
+    profile = PROVIDER_PROFILES[provider]
+    path_prefix = profile["path_prefix"]
+
+    ak = os.getenv(f"{prefix_env}_ACCESS_KEY", "")
+    sk = os.getenv(f"{prefix_env}_SECRET_KEY", "")
+    host = os.getenv(f"{prefix_env}_API_HOST", profile["default_host"])
     tg_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     tg_chat = os.getenv("TELEGRAM_CHAT_ID", "")
 
     if not ak or not sk:
-        print("❌  VMOS_ACCESS_KEY ou VMOS_SECRET_KEY não definidos no .env")
+        print(f"❌  {prefix_env}_ACCESS_KEY ou {prefix_env}_SECRET_KEY não definidos no .env")
         return
 
     print("=" * 60)
-    print("DIAGNÓSTICO — VMOS Cloud")
+    print(f"DIAGNÓSTICO — {provider.upper()} (host={host}, prefix={path_prefix})")
     print("=" * 60)
 
-    # ------------------------------------------------------------------ VMOS
     # Tenta buscar lista de instâncias sem filtrar por padCode
     endpoints_to_try = [
-        ("/vcpcloud/api/padApi/padList", {}),
-        ("/vcpcloud/api/padApi/padDetails", {}),
-        ("/vcpcloud/api/padApi/padDetails", {"padCodes": []}),
-        ("/vcpcloud/api/padApi/padProperties", {}),
+        (f"{path_prefix}/padList", {}),
+        (f"{path_prefix}/padDetails", {}),
+        (f"{path_prefix}/padDetails", {"padCodes": []}),
+        (f"{path_prefix}/padProperties", {}),
     ]
 
     found_codes: list[str] = []
@@ -107,12 +116,12 @@ def main():
     if found_codes:
         unique = list(dict.fromkeys(found_codes))
         print(f"\n🎯  Seus padCodes reais: {unique}")
-        print(f"    Atualize VMOS_PAD_CODES no .env com um desses valores.")
+        print(f"    Atualize {prefix_env}_PAD_CODES no .env com um desses valores.")
     else:
         print(
-            "\n⚠   Não encontrei padCodes automaticamente.\n"
-            "    Verifique no painel web do VMOS Cloud o 'Instance ID' ou 'Device Code'\n"
-            "    da sua instância e atualize VMOS_PAD_CODES no .env."
+            f"\n⚠   Não encontrei padCodes automaticamente.\n"
+            f"    Verifique no painel web do {provider.upper()} o 'Instance ID' ou\n"
+            f"    'Device Code' da sua instância e atualize {prefix_env}_PAD_CODES no .env."
         )
 
     # ------------------------------------------------------------------ Apps instalados
@@ -120,14 +129,14 @@ def main():
     print("APPS INSTALADOS NA INSTÂNCIA")
     print("=" * 60)
 
-    pad_codes_env = os.getenv("VMOS_PAD_CODES", "")
+    pad_codes_env = os.getenv(f"{prefix_env}_PAD_CODES", "")
     pad_codes = [p.strip() for p in pad_codes_env.split(",") if p.strip()]
 
     if not pad_codes:
-        print("⚠   VMOS_PAD_CODES não definido no .env — pulando listagem de apps.")
+        print(f"⚠   {prefix_env}_PAD_CODES não definido no .env — pulando listagem de apps.")
     else:
         for pad_code in pad_codes:
-            status, text = post_raw(ak, sk, host, "/vcpcloud/api/padApi/listInstalledApp",
+            status, text = post_raw(ak, sk, host, f"{path_prefix}/listInstalledApp",
                                     {"padCodes": [pad_code]})
             print(f"\n  Instância: {pad_code}  (HTTP {status})")
             try:

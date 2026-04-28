@@ -43,9 +43,10 @@ def main() -> int:
     else:
         pad_code = args.pad or settings.pad_codes[0]
         client = VmosClient(
-            access_key=settings.vmos_access_key,
-            secret_key=settings.vmos_secret_key,
-            api_host=settings.vmos_api_host,
+            access_key=settings.access_key,
+            secret_key=settings.secret_key,
+            api_host=settings.api_host,
+            path_prefix=settings.api_path_prefix,
             timeout=settings.request_timeout_seconds,
         )
         print(f"📷  Capturando screenshot via API ({pad_code}) ...")

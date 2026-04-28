@@ -1,6 +1,18 @@
-"""VMOS Cloud OpenAPI client with HMAC-SHA256 (AK/SK) request signing.
+"""Cliente OpenAPI compartilhado entre VMOS Cloud e VSPhone.
 
-Reference: https://cloud.vmoscloud.com/vmoscloud/doc/en/server/OpenAPI.html
+Os dois provedores usam exatamente o mesmo algoritmo de assinatura
+HMAC-SHA256, os mesmos schemas de resposta e os mesmos nomes de
+endpoint — diferem apenas no host e no prefixo das rotas:
+
+  VMOS Cloud → host=api.vmoscloud.com  prefix=/vcpcloud/api/padApi
+  VSPhone    → host=api.vsphone.com    prefix=/vsphone/api/padApi
+
+Service name no credentialScope é `armcloud-paas` em AMBOS os provedores
+(provavelmente VSPhone é fork do VMOS).
+
+Refs:
+  https://cloud.vmoscloud.com/vmoscloud/doc/en/server/OpenAPI.html
+  https://cloud.vsphone.com/vsphone/doc/en/server/OpenAPI.html
 
 Signing pipeline:
   1. canonicalString = host\\nx-date\\ncontent-type\\nsignedHeaders\\nx-content-sha256
@@ -8,6 +20,10 @@ Signing pipeline:
   3. signingKey      = HMAC(HMAC(HMAC(SK, shortDate), "armcloud-paas"), "request")
   4. signature       = HMAC(signingKey, stringToSign).hex()
   5. Authorization   = "HMAC-SHA256 Credential=AK, SignedHeaders=..., Signature=..."
+
+A classe mantém o nome `VmosClient` por compatibilidade — funciona
+identicamente para qualquer provedor que siga o mesmo padrão (ver
+`PROVIDER_PROFILES` em config.py).
 """
 from __future__ import annotations
 
@@ -41,7 +57,7 @@ class PadStatus:
 
 
 class VmosApiError(RuntimeError):
-    """Raised when the VMOS API returns a non-success response."""
+    """Raised when the upstream API returns a non-success response."""
 
 
 class VmosClient:
@@ -50,11 +66,13 @@ class VmosClient:
         access_key: str,
         secret_key: str,
         api_host: str = "api.vmoscloud.com",
+        path_prefix: str = "/vcpcloud/api/padApi",
         timeout: int = 20,
     ) -> None:
         self._ak = access_key
         self._sk = secret_key.encode("utf-8")
         self._host = api_host
+        self._path_prefix = path_prefix.rstrip("/")
         self._timeout = timeout
         self._base_url = f"https://{api_host}"
 
@@ -140,7 +158,7 @@ class VmosClient:
 
     def pad_details(self, pad_codes: List[str]) -> List[PadStatus]:
         data = self._post(
-            "/vcpcloud/api/padApi/padDetails",
+            f"{self._path_prefix}/padDetails",
             {"padCodes": pad_codes},
         )
         rows = _extract_rows(data)
@@ -159,7 +177,7 @@ class VmosClient:
 
     def list_installed_apps(self, pad_codes: List[str]) -> Dict[str, List[Dict[str, Any]]]:
         data = self._post(
-            "/vcpcloud/api/padApi/listInstalledApp",
+            f"{self._path_prefix}/listInstalledApp",
             {"padCodes": pad_codes},
         )
         rows = _extract_rows(data)
@@ -182,7 +200,7 @@ class VmosClient:
 
     def start_app(self, pad_code: str, package_name: str) -> Dict[str, Any]:
         return self._post(
-            "/vcpcloud/api/padApi/startApp",
+            f"{self._path_prefix}/startApp",
             {"padCodes": [pad_code], "packageName": package_name},
         )
 
@@ -197,7 +215,7 @@ class VmosClient:
     ) -> Optional[str]:
         """Retorna a URL de um screenshot atual da instância (vence em alguns minutos)."""
         data = self._post(
-            "/vcpcloud/api/padApi/getLongGenerateUrl",
+            f"{self._path_prefix}/getLongGenerateUrl",
             {
                 "padCodes": [pad_code],
                 "format": fmt,
