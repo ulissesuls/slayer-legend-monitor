@@ -621,11 +621,11 @@ Este projeto é deliberadamente simples — funciona como CLI/serviço local. Al
 - **Dashboard de histórico**: salvar checagens em SQLite e exibir gráfico de uptime.
 - **Detecção mais inteligente**: SSIM em vez de diff médio para frozen check; ORB/SIFT em vez de template matching para o HUD.
 - **Outros canais de alerta**: Discord webhook, e-mail, Pushover, ntfy.sh.
-- **Multi-cloud**: adaptar para outros provedores de Android-on-cloud (Redfinger, GeeLark).
+- **Multi-cloud**: abstrair o cliente atual atrás de uma interface `CloudProvider` para suportar **VMOS Cloud, VSPhone e UGPhone** (os 3 principais provedores de Android-on-cloud). Outros candidatos: Redfinger, GeeLark.
 
 ### Empacotamento e UX
 - **App Desktop** com Tauri/Electron + UI para configurar o `.env` num formulário, ver status em tempo real, e exibir os screenshots capturados.
-- **App Android nativo** que faz polling da mesma API e mostra notificações push.
+- **App mobile multi-plataforma (Android + iOS) com integração aos 3 principais provedores** (VMOS, VSPhone, UGPhone), publicado na **Play Store** e na **App Store**. UI nativa para login na conta do provedor escolhido, configurar instâncias monitoradas, receber push nativo (FCM no Android, APNs no iOS) em vez de Telegram, e visualizar screenshots históricos. Stack possível: React Native ou Flutter (compartilhado entre iOS/Android), backend FastAPI hospedado em VPS rodando o loop de verificação (já que apps mobile não rodam loops 24/7 confiavelmente em background), com o mesmo core deste repo. Pré-requisito: refactor multi-provider concluído.
 - **Interface web** com FastAPI + React: hospedável em VPS, dashboard com status de todas as instâncias, login multi-usuário.
 - **Imagem Docker** — `docker run -e VMOS_ACCESS_KEY=... slayer-monitor` para deploy 1-comando.
 - **GitHub Actions schedule** rodando `python monitor.py --once` a cada 20 min como cron-job-as-a-service grátis.
