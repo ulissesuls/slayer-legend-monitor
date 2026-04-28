@@ -331,6 +331,27 @@ Se você não vê as linhas `[Visual]` e `[Frozen]`, alguma flag ainda está `fa
 
 ## Rodando em produção (24/7)
 
+### Opção 0 — Atalhos de área de trabalho (mais simples no Windows)
+
+O projeto inclui três scripts `.bat` que automatizam tudo:
+
+| Arquivo | O que faz | Como parar |
+|---|---|---|
+| `start_monitor.bat` | Roda em janela visível (vê os logs em tempo real) | `Ctrl+C` ou fechar a janela |
+| `start_monitor_background.bat` | Roda invisível em segundo plano (libera o terminal) | Executar `stop_monitor.bat` |
+| `stop_monitor.bat` | Encerra qualquer instância do monitor que estiver rodando | — |
+
+**Para criar atalhos na área de trabalho:**
+
+1. Abra a pasta do projeto no Explorer.
+2. Clique com o botão direito em `start_monitor_background.bat` → **Enviar para** → **Área de trabalho (criar atalho)**.
+3. (Opcional) Renomeie o atalho para algo amigável: `Iniciar Slayer Monitor`.
+4. Repita para `stop_monitor.bat` → `Parar Slayer Monitor`.
+
+A partir daí: dois cliques na área de trabalho e o monitor começa a rodar invisivelmente. Os logs ficam gravados em `monitor.log` dentro da pasta do projeto.
+
+> Para inicialização **automática com o Windows**: cole o atalho de `start_monitor_background.bat` na pasta `shell:startup` (cole esse nome literal no Executar — `Win+R` — e Enter).
+
 ### Opção 1 — Loop simples na janela do PowerShell
 
 ```powershell
@@ -382,6 +403,40 @@ nssm start SlayerMonitor
 
 Ele reinicia automaticamente em caso de queda, sobrevive a logoff, e inicia com o Windows.
 
+### Como parar o Monitor
+
+Depende de **como** você iniciou:
+
+| Iniciado com | Como parar |
+|---|---|
+| `python monitor.py` (janela aberta) | `Ctrl + C` na janela |
+| `start_monitor.bat` | `Ctrl + C` ou fechar a janela |
+| `start_monitor_background.bat` | Duplo-clique em `stop_monitor.bat` |
+| `Start-Process pythonw ...` (manual) | `Get-Process pythonw \| Stop-Process` no PowerShell |
+| Serviço NSSM | `nssm stop SlayerMonitor` (no PowerShell como admin) |
+| systemd (Linux) | `sudo systemctl stop slayer-monitor` |
+
+**Verificar se o monitor ainda está rodando:**
+
+```powershell
+Get-Process pythonw -ErrorAction SilentlyContinue
+```
+
+Se não retornar nada, está parado.
+
+> ⚠ Se você rodar `stop_monitor.bat` quando tem **outros scripts Python invisíveis** abertos no PC (ex: outros bots, automações), eles também serão encerrados — o `pythonw.exe` é compartilhado. Nesse caso prefira parar pelo Gerenciador de Tarefas: aba **Detalhes**, procurar `pythonw.exe`, clicar com direito → **Finalizar tarefa** apenas no que tem `monitor.py` na linha de comando.
+
+### (Avançado) Empacotar como `.exe` standalone
+
+Se quiser distribuir um único `.exe` para usuários **sem Python instalado**, dá para usar [PyInstaller](https://pyinstaller.org):
+
+```powershell
+pip install pyinstaller
+pyinstaller --onefile --noconsole --name SlayerMonitor monitor.py
+```
+
+O executável fica em `dist\SlayerMonitor.exe`. Para uso pessoal isso é exagero (o `.bat` resolve), mas é útil se for distribuir para amigos que não programam. Atenção: o binário fica grande (~200-500 MB por causa do OpenCV e numpy embutidos), e antivírus às vezes marcam executáveis PyInstaller como suspeitos — pode ser necessário criar uma exceção.
+
 ### Opção 4 — Linux com systemd
 
 Crie `/etc/systemd/system/slayer-monitor.service`:
@@ -416,23 +471,28 @@ journalctl -u slayer-monitor -f
 
 ```
 .
-├── monitor.py                  # entry point + loop principal
+├── monitor.py                       # entry point + loop principal
+├── start_monitor.bat                # inicia com janela visível (Windows)
+├── start_monitor_background.bat     # inicia em segundo plano (Windows)
+├── stop_monitor.bat                 # encerra o monitor (Windows)
 ├── slayer_monitor/
-│   ├── config.py               # carrega o .env
-│   ├── vmos_client.py          # API VMOS + assinatura HMAC-SHA256 AK/SK
-│   ├── telegram_notifier.py    # alertas no Telegram
-│   └── visual_detector.py      # OpenCV template matching + frozen detection
+│   ├── config.py                    # carrega o .env
+│   ├── vmos_client.py               # API VMOS + assinatura HMAC-SHA256 AK/SK
+│   ├── telegram_notifier.py         # alertas no Telegram
+│   └── visual_detector.py           # OpenCV template matching + frozen detection
 ├── tools/
-│   ├── diagnose.py             # valida credenciais, lista padCodes e apps
-│   ├── capture.py              # captura screenshot da API para criar templates
-│   ├── test_visual.py          # testa template matching e mostra scores
-│   └── test_frozen.py          # mede diff entre screenshots para calibrar
-├── templates/hud/              # SEUS templates do HUD (fora do git)
-├── screenshots/                # screenshots gerados (fora do git)
-├── .env                        # SUAS credenciais (fora do git)
-├── .env.example                # modelo comentado
+│   ├── diagnose.py                  # valida credenciais, lista padCodes e apps
+│   ├── capture.py                   # captura screenshot da API para templates
+│   ├── test_visual.py               # testa template matching e mostra scores
+│   └── test_frozen.py               # mede diff entre screenshots para calibrar
+├── templates/hud/
+│   ├── starter_*.png                # 4 templates universais (versionados)
+│   └── hud_*.png                    # SEUS templates (fora do git)
+├── screenshots/                     # screenshots gerados (fora do git)
+├── .env                             # SUAS credenciais (fora do git)
+├── .env.example                     # modelo comentado
 ├── requirements.txt
-├── LICENSE                     # MIT
+├── LICENSE                          # MIT
 └── README.md
 ```
 
