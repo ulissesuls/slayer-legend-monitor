@@ -1,0 +1,4 @@
+requests>=2.32.0
+python-dotenv>=1.0.1
+opencv-python-headless>=4.10.0.84
+numpy>=1.26.0

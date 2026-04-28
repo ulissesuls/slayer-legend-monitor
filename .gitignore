@@ -1,0 +1,42 @@
+# Segredos
+.env
+.env.local
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE / ferramentas locais
+.idea/
+.vscode/
+.claude/
+
+# Artefatos do monitor
+logs/
+*.log
+screenshots/
+
+# Templates do HUD pessoais (idioma do jogo, resolução da instância,
+# nível e equipamento do personagem aparecem em alguns recortes).
+# Cada usuário gera os seus via `python tools/capture.py`.
+# Exceção: o starter pack (4 templates universais e independentes de
+# idioma) fica versionado para reduzir o atrito de primeira instalação.
+templates/hud/*.png
+templates/hud/*.jpg
+templates/hud/*.jpeg
+templates/hud/*.bmp
+templates/hud/*.webp
+!templates/hud/starter_*.png
