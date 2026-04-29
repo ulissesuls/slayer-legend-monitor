@@ -8,12 +8,12 @@ Feito para quem deixa o farming automático ligado o dia inteiro e não quer des
 
 ## O que é detectado
 
-| Falha | Como é detectado |
-|---|---|
-| Instância offline / em erro | API do provedor (`padDetails`) |
-| Jogo desinstalado | API do provedor (`listInstalledApp`) |
-| Jogo crashou ou foi para segundo plano | Screenshot via API + template matching OpenCV |
-| Stream congelado (HUD na tela mas jogo travou) | Comparação de 2 screenshots em sequência |
+| Falha                                          | Como é detectado                             |
+| ---------------------------------------------- | --------------------------------------------- |
+| Instância offline / em erro                   | API do provedor (`padDetails`)              |
+| Jogo desinstalado                              | API do provedor (`listInstalledApp`)        |
+| Jogo crashou ou foi para segundo plano         | Screenshot via API + template matching OpenCV |
+| Stream congelado (HUD na tela mas jogo travou) | Comparação de 2 screenshots em sequência   |
 
 ## Arquitetura
 
@@ -64,6 +64,7 @@ python -m venv .venv
 ```
 
 > Se a ativação falhar com erro de política, rode uma vez:
+>
 > ```powershell
 > Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 > ```
@@ -89,23 +90,23 @@ Preencha as 5 linhas marcadas como `[OBRIGATÓRIO]`. As demais já vêm com defa
 
 ## Escolhendo o provedor
 
-O monitor suporta **VMOS Cloud** e **VSPhone**. Os dois usam APIs essencialmente idênticas (mesmo algoritmo de assinatura HMAC-SHA256, mesmos schemas de resposta) — diferem apenas no host e no prefixo das rotas.
+O *Slayer Legend Monitor* suporta **VMOS Cloud** e **VSPhone**. Os dois usam APIs essencialmente idênticas (mesmo algoritmo de assinatura HMAC-SHA256, mesmos schemas de resposta) — diferem apenas no host e no prefixo das rotas.
 
-No `.env`, defina qual provedor você usa:
+No arquivo `.env`, defina qual provedor você usa:
 
 ```ini
 CLOUD_PROVIDER=vmos       # ou: vsphone
 ```
 
-E preencha apenas as credenciais do provedor escolhido (`VMOS_*` para VMOS, `VSPHONE_*` para VSPhone). As outras podem ficar com placeholder.
+E preencha apenas as credenciais do provedor escolhido (`VMOS_*` para VMOS, `VSPHONE_*` para VSPhone). As outras podem ficar como placeholders.
 
 ## Configurando o VMOS Cloud (`CLOUD_PROVIDER=vmos`)
 
 ### Obter Access Key e Secret Key
 
 1. Entre em [vmoscloud.com](https://www.vmoscloud.com) e faça login.
-2. No menu superior direito, clique no seu perfil → **Personal Center**.
-3. Procure a seção **AccessKey** (pode estar em "API" ou "Developer").
+2. No menu da esquerda, clique em → **Desenvolvedor**.
+3. Procure o campo **AccessKey ID** (pode estar em "API" ou "Developer").
 4. Clique em **Create AccessKey** (ou similar). Anote ambos:
    - `AccessKeyId` → vai em `VMOS_ACCESS_KEY`
    - `SecretAccessKey` → vai em `VMOS_SECRET_KEY`
@@ -114,9 +115,12 @@ E preencha apenas as credenciais do provedor escolhido (`VMOS_*` para VMOS, `VSP
 
 ### Obter o ID da instância (`padCode`)
 
-No painel das suas instâncias, clique na que você quer monitorar. No painel lateral direito procure **"ID do telefone na nuvem"** (em inglês: "Cloud Phone ID"). Será algo como `APP64N6T7S3N8L6K`.
+No painel das suas instâncias, clique na que você quer monitorar. Clique no ícone de configuração daquela instância e copie o **"ID do telefone na nuvem"** . 
 
-Coloque no `.env`:
+Será algo como `APP64N6T7S3N8L6K`.
+
+Coloque no arquivo `.env`:
+
 ```ini
 VMOS_PAD_CODES=APP64N6T7S3N8L6K
 ```
@@ -138,7 +142,7 @@ VMOS_PAD_CODES=APP64N6T7S3N8L6K
 
 ### Obter o ID da instância
 
-No painel do VSPhone, abra a instância e procure pelo identificador do telefone na nuvem (mesmo conceito do VMOS — uma string como `APP...`). Coloque no `.env`:
+No painel do VSPhone, abra a instância e procure pelo identificador do telefone na nuvem (mesmo conceito do VMOS — uma string como `APP...`). Coloque no arquivo `.env`:
 
 ```ini
 VSPHONE_PAD_CODES=APPxxxxxxxxxxxx
@@ -173,7 +177,8 @@ Você precisa de **dois valores**: o `TELEGRAM_BOT_TOKEN` (identidade do bot) e 
 python tools/diagnose.py
 ```
 
-Esse script detecta automaticamente o provedor configurado (`CLOUD_PROVIDER` no `.env`) e faz as verificações:
+Abra o jogo e deixe-o rodando na sua instância. Esse script detecta automaticamente o provedor configurado (`CLOUD_PROVIDER` no `.env`) e faz as verificações:
+
 - ✅ Credenciais do provedor (VMOS ou VSPhone) funcionam — lista padCodes da sua conta.
 - ✅ Token do Telegram é válido.
 - ✅ Mensagem de teste chega no chat configurado.
@@ -185,13 +190,14 @@ Se algum item falhar, ele mostra exatamente qual variável corrigir no `.env`.
 
 ## Primeiro teste
 
-Com o `.env` preenchido, faça uma verificação única para confirmar tudo:
+Ainda com o jogo aberto e com o `.env` preenchido, faça uma verificação única para confirmar tudo:
 
 ```powershell
 python monitor.py --once
 ```
 
 Saída esperada:
+
 ```
 [INFO] slayer_monitor: Verificando instância APP64N6T7S3N8L6K ...
 [INFO] slayer_monitor: [API] APP64N6T7S3N8L6K -> API: instância online, padStatus=running, pacote instalado.
@@ -203,18 +209,18 @@ Não chega mensagem no Telegram porque está tudo OK — o monitor só envia ale
 
 ## Configurando o fallback visual (recomendado)
 
-Sem o fallback visual, o monitor detecta apenas "instância offline" ou "jogo desinstalado". O fallback visual cobre o caso mais comum: **jogo crashou e voltou para a tela inicial do Android, mas a instância continua ligada**.
+Sem o fallback visual, o monitor detecta apenas "instância offline" ou "jogo desinstalado". O fallback visual cobre o caso mais comum: **jogo crashou e voltou para a tela inicial do Android, mas a instância continua ligada**. Nesta parte, é importante que cada jogador configure de acordo com a sua tela.
 
 ### Starter pack incluído no repo
 
-Para reduzir o atrito de primeira instalação, o repo já inclui **4 templates universais** em `templates/hud/`:
+Para reduzir o atrito de primeira instalação, o repo já inclui **4 templates universais** no diretório `templates/hud/`:
 
-| Arquivo | O que é | Universal? |
-|---|---|---|
+| Arquivo                 | O que é                                      | Universal?              |
+| ----------------------- | --------------------------------------------- | ----------------------- |
 | `starter_manabar.png` | Barra de cooldown azul (sequência de blocos) | ✅ Pixel art, sem texto |
-| `starter_map.png` | Sprite do mini-mapa | ✅ Sem texto |
-| `starter_stage.png` | Caixa com símbolo "?" | ✅ "?" é universal |
-| `starter_toolbar.png` | Faixa de ícones da barra inferior | ✅ Só ícones |
+| `starter_map.png`     | Sprite do mini-mapa                           | ✅ Sem texto            |
+| `starter_stage.png`   | Caixa com símbolo "?"                        | ✅ "?" é universal     |
+| `starter_toolbar.png` | Faixa de ícones da barra inferior            | ✅ Só ícones          |
 
 Estes funcionam **independentemente do idioma** do seu jogo. **Mas com 4 templates a detecção fica no limite** (`VISUAL_MIN_MATCHES=3` exige ≥3 batendo simultaneamente). Você precisa adicionar **3-4 templates próprios** para um conjunto robusto. Os melhores candidatos pessoais são:
 
@@ -224,38 +230,43 @@ Estes funcionam **independentemente do idioma** do seu jogo. **Mas com 4 templat
 ### Por que você ainda precisa de templates próprios?
 
 Os 4 starters cobrem só elementos **estáticos e genéricos**. Para detecção robusta também queremos elementos que:
+
 - Confirmam que o jogo está em **combate ativo**, não na tela inicial do app.
 - Aparecem em **modos diferentes** (combate normal, economia de bateria, idle de farming).
 
 Esses elementos quase sempre têm:
+
 - **Texto** ("FASE 920", "AUTO", "AVENTURA") — varia com o idioma.
 - **Resolução específica** da sua instância (720×1280, 1080×1920…) — varia com o modelo do telefone na nuvem.
 
-Por isso são pessoais. Você gera os seus em ~3 min seguindo o passo a passo abaixo.
+Por isso são pessoais. Você gera os seus em ~3 min seguindo o passo a passo abaixo. Esses passos são importantes para deixar o detector mais robusto e reduzir em muito a possibilidade de falhas na detecção.
 
 ### Passo a passo para adicionar seus templates
 
-**1. Abra o jogo na sua instância** (VMOS ou VSPhone) em uma tela típica de combate (farming ativo, boss).
+**1. Abra o jogo na sua instância** (VMOS ou VSPhone) em uma tela típica de combate (farming ativo, boss). É importante que, no farming, você deixe sempre na tela mais básica (skills e toolbar inferior), para fins de padronização. Se você deixa, por exemplo, farmando na tela de minimapa, o matching pode não funcionar.
 
 **2. Capture um screenshot via API:**
+
 ```powershell
 python tools/capture.py
 ```
+
 O arquivo é salvo em `screenshots/<padCode>_<timestamp>.png`.
 
 **3. Abra o screenshot** em qualquer editor de imagem (Paint, Recortes do Windows, Photoshop, GIMP).
 
 **4. Recorte de 3 a 6 elementos do HUD** e salve cada um como `.png` em `templates/hud/`. Use **qualquer prefixo exceto `starter_`** (esses são reservados para os starters versionados). Sugestão: `hud_*.png`.
 
-| ✅ Bons templates pessoais | ❌ Evite |
-|---|---|
-| Botão "AUTO" (texto + ícone de engrenagem) | Ícones de moeda (diamante, esmeralda) — formas simples casam com qualquer coisa |
-| Strip horizontal com 2-3 botões da nav inferior + texto | Quadrados pretos/cinzas |
-| Nome da fase ("FASE 920" em PT, "STAGE 920" em EN) | Pixels isolados ou setas genéricas |
-| Faixa de skills com numeração de cooldown visível | Letras isoladas |
-| Avatar do personagem com moldura colorida | Formas geométricas simples |
+| ✅ Bons templates pessoais                               | ❌ Evite                                                                          |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Botão "AUTO" (texto + ícone de engrenagem)             | Ícones de moeda (diamante, esmeralda) — formas simples casam com qualquer coisa |
+| Strip horizontal com 2-3 botões da nav inferior + texto | Quadrados pretos/cinzas                                                           |
+| Nome da fase ("FASE 920" em PT, "STAGE 920" em EN)       | Pixels isolados ou setas genéricas                                               |
+| Faixa de ícones da toolbar ou seu nickname              | Letras isoladas                                                                   |
+| Avatar do personagem com moldura colorida                | Formas geométricas simples                                                       |
 
 **Regras práticas:**
+
 - **≥ 60×60 pixels** após recorte
 - **Texto ou cores únicas do jogo** (azul-cobalto, verde-tóxico)
 - **Estático** — sempre na mesma posição durante o combate
@@ -263,7 +274,7 @@ O arquivo é salvo em `screenshots/<padCode>_<timestamp>.png`.
 
 > ⚠ **Cuidado misturando elementos.** Se você recortar "botão da fase" mas pegar pixels do número da fase junto, o template fica pessoal (cada player está em uma fase) e pode parar de bater quando você avançar. Recorte só a moldura/ícone, **sem o número**.
 
-**5. Teste seus templates ANTES de habilitar o fallback** — o `test_visual.py` funciona sem precisar do `ENABLE_VISUAL_FALLBACK=true`:
+**5. Execute um teste dos seus templates ANTES de habilitar o fallback** — o `test_visual.py` funciona sem precisar do `ENABLE_VISUAL_FALLBACK=true`:
 
 ```powershell
 # Com o jogo aberto na tela de combate:
@@ -307,11 +318,13 @@ Detecta o cenário raro: jogo crashou mas a imagem permaneceu congelada na tela 
 ### Como ativar
 
 **1. Calibre o threshold com o jogo em combate ativo** (o `test_frozen.py` funciona sem precisar habilitar nada no `.env`):
+
 ```powershell
 python tools/test_frozen.py --runs 3
 ```
 
 Saída exemplo:
+
 ```
 [1/3] diff=0.14701  🎬 ATIVO
 [2/3] diff=0.16262  🎬 ATIVO
@@ -334,10 +347,13 @@ ENABLE_FROZEN_CHECK=true
 ```
 
 A partir daí, em cada ciclo onde o HUD for detectado, o monitor automaticamente:
+
 - Tira screenshot 1 → faz template matching.
 - Espera 6 segundos.
 - Tira screenshot 2 → compara pixel-a-pixel.
 - Se `diff < FROZEN_DIFF_THRESHOLD` → alerta "Frame CONGELADO".
+
+**Observação**: é recomendável **DESATIVAR** o modo de economia de energia, pois como ele é quase inteiramente "estático", o Monitor pode confundir o estado de congelamento se tirar prints iguais.
 
 ---
 
@@ -345,14 +361,15 @@ A partir daí, em cada ciclo onde o HUD for detectado, o monitor automaticamente
 
 Depois de validar tudo com as ferramentas de teste, confira que seu `.env` tem as flags certas. Os defaults do `.env.example` vêm em **modo seguro** (`false`) para que o primeiro `python monitor.py --once` funcione sem templates. Para a configuração 24/7 completa:
 
-| Variável | Default | Recomendado em produção |
-|---|---|---|
-| `ENABLE_VISUAL_FALLBACK` | `false` | `true` ← depois de validar templates com `test_visual.py` |
-| `ENABLE_FROZEN_CHECK` | `false` | `true` ← depois de calibrar threshold com `test_frozen.py` |
+| Variável                  | Default   | Recomendado em produção                                       |
+| -------------------------- | --------- | --------------------------------------------------------------- |
+| `ENABLE_VISUAL_FALLBACK` | `false` | `true` ← depois de validar templates com `test_visual.py`  |
+| `ENABLE_FROZEN_CHECK`    | `false` | `true` ← depois de calibrar threshold com `test_frozen.py` |
 
 > ⚠ **Se você esquecer de virar essas flags, o monitor segue rodando** mas só faz a checagem básica da API (instância online + jogo instalado). **Não vai detectar jogo crashado nem frame congelado** — só instância caída ou desinstalada.
 
 Confirme com:
+
 ```powershell
 # Saída esperada com tudo ligado, jogo aberto, no log do --once:
 # [API] ... -> API: instância online, padStatus=running, pacote instalado.
@@ -371,11 +388,11 @@ Se você não vê as linhas `[Visual]` e `[Frozen]`, alguma flag ainda está `fa
 
 O projeto inclui três scripts `.bat` que automatizam tudo:
 
-| Arquivo | O que faz | Como parar |
-|---|---|---|
-| `start_monitor.bat` | Roda em janela visível (vê os logs em tempo real) | `Ctrl+C` ou fechar a janela |
-| `start_monitor_background.bat` | Roda invisível em segundo plano (libera o terminal) | Executar `stop_monitor.bat` |
-| `stop_monitor.bat` | Encerra qualquer instância do monitor que estiver rodando | — |
+| Arquivo                          | O que faz                                                  | Como parar                    |
+| -------------------------------- | ---------------------------------------------------------- | ----------------------------- |
+| `start_monitor.bat`            | Roda em janela visível (vê os logs em tempo real)        | `Ctrl+C` ou fechar a janela |
+| `start_monitor_background.bat` | Roda invisível em segundo plano (libera o terminal)       | Executar `stop_monitor.bat` |
+| `stop_monitor.bat`             | Encerra qualquer instância do monitor que estiver rodando | —                            |
 
 **Para criar atalhos na área de trabalho:**
 
@@ -409,11 +426,13 @@ Start-Process -FilePath ".venv\Scripts\pythonw.exe" `
 ```
 
 Para parar:
+
 ```powershell
 Get-Process pythonw | Stop-Process
 ```
 
 Acompanhar o log ao vivo:
+
 ```powershell
 Get-Content monitor.log -Wait
 ```
@@ -428,11 +447,13 @@ nssm install SlayerMonitor
 ```
 
 No GUI que abrir:
+
 - **Path**: `C:\caminho\completo\.venv\Scripts\pythonw.exe`
 - **Startup directory**: `C:\caminho\completo\Projeto MONITOR`
 - **Arguments**: `monitor.py`
 
 Inicie o serviço:
+
 ```powershell
 nssm start SlayerMonitor
 ```
@@ -443,14 +464,14 @@ Ele reinicia automaticamente em caso de queda, sobrevive a logoff, e inicia com 
 
 Depende de **como** você iniciou:
 
-| Iniciado com | Como parar |
-|---|---|
-| `python monitor.py` (janela aberta) | `Ctrl + C` na janela |
-| `start_monitor.bat` | `Ctrl + C` ou fechar a janela |
-| `start_monitor_background.bat` | Duplo-clique em `stop_monitor.bat` |
-| `Start-Process pythonw ...` (manual) | `Get-Process pythonw \| Stop-Process` no PowerShell |
-| Serviço NSSM | `nssm stop SlayerMonitor` (no PowerShell como admin) |
-| systemd (Linux) | `sudo systemctl stop slayer-monitor` |
+| Iniciado com                           | Como parar                                             |
+| -------------------------------------- | ------------------------------------------------------ |
+| `python monitor.py` (janela aberta)  | `Ctrl + C` na janela                                 |
+| `start_monitor.bat`                  | `Ctrl + C` ou fechar a janela                        |
+| `start_monitor_background.bat`       | Duplo-clique em `stop_monitor.bat`                   |
+| `Start-Process pythonw ...` (manual) | `Get-Process pythonw \| Stop-Process` no PowerShell   |
+| Serviço NSSM                          | `nssm stop SlayerMonitor` (no PowerShell como admin) |
+| systemd (Linux)                        | `sudo systemctl stop slayer-monitor`                 |
 
 **Verificar se o monitor ainda está rodando:**
 
@@ -538,15 +559,15 @@ journalctl -u slayer-monitor -f
 
 Todas rodam dentro do `.venv` ativo, na raiz do projeto:
 
-| Comando | O que faz |
-|---|---|
-| `python monitor.py` | Loop contínuo (a cada 20 min) |
-| `python monitor.py --once` | Verificação única |
-| `python tools/diagnose.py` | Valida `.env` e descobre padCodes/packageName |
-| `python tools/capture.py` | Salva um screenshot da instância em `screenshots/` |
-| `python tools/test_visual.py` | Mostra score de cada template contra um screenshot |
-| `python tools/test_visual.py --image foo.png` | Testa template matching numa imagem local |
-| `python tools/test_frozen.py --runs 3` | Mede diff entre capturas (calibrar `FROZEN_DIFF_THRESHOLD`) |
+| Comando                                         | O que faz                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------- |
+| `python monitor.py`                           | Loop contínuo (a cada 20 min)                                |
+| `python monitor.py --once`                    | Verificação única                                          |
+| `python tools/diagnose.py`                    | Valida `.env` e descobre padCodes/packageName               |
+| `python tools/capture.py`                     | Salva um screenshot da instância em `screenshots/`         |
+| `python tools/test_visual.py`                 | Mostra score de cada template contra um screenshot            |
+| `python tools/test_visual.py --image foo.png` | Testa template matching numa imagem local                     |
+| `python tools/test_frozen.py --runs 3`        | Mede diff entre capturas (calibrar `FROZEN_DIFF_THRESHOLD`) |
 
 ---
 
@@ -587,10 +608,12 @@ Você bloqueou seu próprio bot em algum momento. No Telegram, abra o chat com o
 ### `HTTP 401/403` da API do provedor
 
 Suas credenciais AK/SK estão erradas, expiraram, ou foram revogadas. Vá no painel do provedor configurado:
+
 - **VMOS**: [vmoscloud.com](https://www.vmoscloud.com) → Personal Center → AccessKey
 - **VSPhone**: [cloud.vsphone.com](https://cloud.vsphone.com) → AK/SK
 
 Em ambos:
+
 - Confirme que a chave está ativa.
 - Recrie se necessário (a Secret só aparece uma vez na criação).
 - Cuidado para não copiar espaços antes/depois quando colar no `.env`.
@@ -619,6 +642,7 @@ Possíveis causas:
 - **`VISUAL_MIN_MATCHES` muito alto para os templates atuais**. Reduza para `2` no `.env` se você só tem os 4 starters + 2 pessoais.
 
 Calibre rodando:
+
 ```powershell
 python tools/test_visual.py     # com o jogo aberto
 ```
@@ -634,6 +658,7 @@ Seu `FROZEN_DIFF_THRESHOLD` está alto demais. Rode `python tools/test_frozen.py
 **Isso é o esperado** — o monitor só envia alertas quando há **problema**. Silêncio = tudo funcionando.
 
 Para confirmar que o canal funciona:
+
 - `python tools/diagnose.py` envia uma mensagem de teste.
 - `python monitor.py` (loop completo) envia uma mensagem de "Monitor iniciado" no startup.
 
@@ -657,6 +682,7 @@ journalctl -u slayer-monitor -f
 Este projeto é deliberadamente simples — funciona como CLI/serviço local. Algumas direções interessantes para quem quiser estender:
 
 ### Funcionalidades
+
 - **Auto-recovery**: ao detectar o jogo fechado, chamar `startApp` da API do provedor para tentar reabrir antes de alertar.
 - **Múltiplos jogos**: generalizar `GAME_PACKAGE` para uma lista, com templates por jogo.
 - **Dashboard de histórico**: salvar checagens em SQLite e exibir gráfico de uptime.
@@ -665,6 +691,7 @@ Este projeto é deliberadamente simples — funciona como CLI/serviço local. Al
 - **Multi-cloud**: VMOS Cloud e VSPhone já são suportados (alterando `CLOUD_PROVIDER` no `.env`). Falta adicionar UGPhone (próximo alvo) e candidatos como Redfinger e GeeLark — ver seção [Adicionando um novo provedor](#adicionando-um-novo-provedor).
 
 ### Empacotamento e UX
+
 - **App Desktop** com Tauri/Electron + UI para configurar o `.env` num formulário, ver status em tempo real, e exibir os screenshots capturados.
 - **App mobile multi-plataforma (Android + iOS) com integração aos 3 principais provedores** (VMOS, VSPhone, UGPhone), publicado na **Play Store** e na **App Store**. UI nativa para login na conta do provedor escolhido, configurar instâncias monitoradas, receber push nativo (FCM no Android, APNs no iOS) em vez de Telegram, e visualizar screenshots históricos. Stack possível: React Native ou Flutter (compartilhado entre iOS/Android), backend FastAPI hospedado em VPS rodando o loop de verificação (já que apps mobile não rodam loops 24/7 confiavelmente em background), com o mesmo core deste repo. Pré-requisito: refactor multi-provider concluído.
 - **Interface web** com FastAPI + React: hospedável em VPS, dashboard com status de todas as instâncias, login multi-usuário.
@@ -672,6 +699,7 @@ Este projeto é deliberadamente simples — funciona como CLI/serviço local. Al
 - **GitHub Actions schedule** rodando `python monitor.py --once` a cada 20 min como cron-job-as-a-service grátis.
 
 ### Robustez
+
 - **Retry com backoff exponencial** nas chamadas à API do provedor.
 - **Tratamento separado para timeouts de rede** (não disparar alerta de Telegram no Telegram em timeouts isolados; só após N falhas consecutivas).
 - **Persistência do estado de cooldown** em arquivo, para sobreviver a restart do processo.
@@ -699,6 +727,7 @@ PROVIDER_PROFILES = {
 **2.** Documente as variáveis no `.env.example` (`UGPHONE_ACCESS_KEY`, `UGPHONE_SECRET_KEY`, `UGPHONE_API_HOST`, `UGPHONE_PAD_CODES`).
 
 **3.** Habilite no `.env`:
+
 ```ini
 CLOUD_PROVIDER=ugphone
 UGPHONE_ACCESS_KEY=...
